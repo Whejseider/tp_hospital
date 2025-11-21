@@ -480,6 +480,81 @@ app.post('/habitacion/nueva', async (req, res) => {
     }
 });
 
+//EDITAR HABITACION
+app.get('/habitacion/editar/:num_habitacion', async (req, res) => {
+    const num_habitacion = Number(req.params.num_habitacion);
+    try {
+        const habitacionResult = await pool.query(`
+                    SELECT num_habitacion, piso, orientacion, id_sector
+                    FROM habitacion
+                    WHERE num_habitacion = $1`,
+            [num_habitacion]
+        );
+
+        if (habitacionResult.rowCount === 0) {
+            return res.send('Habitación no encontrada');
+        }
+        const h = habitacionResult.rows[0];
+
+        const sectoresResult = await pool.query(`
+            SELECT id_sector, tipo
+            FROM sector
+            ORDER BY id_sector`);
+
+        const options = sectoresResult.rows.map((s: any) => {
+            const isSelected = s.id_sector === h.id_sector ? 'selected' : '';
+            return `<option value="${s.id_sector}" ${isSelected}>${s.id_sector} - ${s.tipo}</option>`;
+        }).join('');
+
+        res.send(`
+      <h1>Editar habitación ${h.num_habitacion}</h1>
+      <form method="POST" action="/habitacion/editar/${h.num_habitacion}">
+        Número (No editable): <input type="number" value="${h.num_habitacion}" disabled><br><br>
+        
+        Piso: <input type="number" name="piso" value="${h.piso}" required><br><br>
+        
+        Orientación:
+        <select name="orientacion" required>
+          <option value="NORTE" ${h.orientacion === 'NORTE' ? 'selected' : ''}>NORTE</option>
+          <option value="SUR" ${h.orientacion === 'SUR' ? 'selected' : ''}>SUR</option>
+          <option value="ESTE" ${h.orientacion === 'ESTE' ? 'selected' : ''}>ESTE</option>
+          <option value="OESTE" ${h.orientacion === 'OESTE' ? 'selected' : ''}>OESTE</option>
+        </select><br><br>
+        
+        Sector:
+        <select name="id_sector" required>
+          ${options}
+        </select><br><br>
+        
+        <button type="submit">Guardar cambios</button>
+      </form>
+      <br><a href="/habitacion">Volver</a>
+    `);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//ACTUALIZAR HABITACION
+app.post('/habitacion/editar/:num_habitacion', async (req, res) => {
+    const num_habitacion = Number(req.params.num_habitacion);
+    const {piso, orientacion, id_sector} = req.body;
+
+    try {
+        await pool.query(
+            `UPDATE habitacion
+             SET piso=$1,
+                 orientacion=$2,
+                 id_sector=$3
+             WHERE num_habitacion = $4`,
+            [Number(piso), orientacion, Number(id_sector), num_habitacion]
+        );
+        res.redirect('/habitacion');
+    } catch (err: any) {
+        res.status(400).send(`<h1>Error al actualizar</h1><pre>${err.message}</pre><a href="/habitacion">Volver</a>`);
+    }
+});
+
 //BORRAR HABITACION
 app.post('/habitacion/borrar/:num_habitacion', async (req, res) => {
     const num_habitacion = Number(req.params.num_habitacion);
@@ -522,6 +597,8 @@ app.get('/cama', async (_req, res) => {
                 <td>${c.num_cama}</td>
                 <td>${c.estado}</td>
                 <td>
+                <a href="/cama/editar/${c.num_cama}/${c.num_habitacion}">Editar</a>
+                |
                     <form method="POST" action="/cama/borrar/${c.num_cama}/${c.num_habitacion}" style="display:inline">
                         <button type="submit" onclick="return confirm('¿Borrar cama ${c.num_cama} de la habitación ${c.num_habitacion}?')">Borrar</button>
                     </form>
@@ -603,6 +680,60 @@ app.post('/cama/nueva', async (req, res) => {
     }
 });
 
+//EDITAR CAMA
+app.get('/cama/editar/:num_cama/:num_habitacion', async (req, res) => {
+    const num_cama = Number(req.params.num_cama);
+    const num_habitacion = Number(req.params.num_habitacion);
+    try {
+        const result = await pool.query(`
+                    SELECT num_cama, num_habitacion, estado
+                    FROM cama
+                    WHERE num_cama = $1
+                      AND num_habitacion = $2`,
+            [num_cama, num_habitacion]
+        );
+        if (result.rowCount === 0) return res.send('Cama no encontrada');
+        const c = result.rows[0];
+
+        res.send(`
+            <h1>Editar Cama ${c.num_cama} (Hab: ${c.num_habitacion})</h1>
+            <form method="POST" action="/cama/editar/${c.num_cama}/${c.num_habitacion}">
+                Habitación: <input type="number" value="${c.num_habitacion}" disabled><br><br>
+                N° Cama: <input type="number" value="${c.num_cama}" disabled><br><br>
+                
+                Estado:
+                <select name="estado">
+                    <option value="LIBRE" ${c.estado === 'LIBRE' ? 'selected' : ''}>LIBRE</option>
+                    <option value="OCUPADA" ${c.estado === 'OCUPADA' ? 'selected' : ''}>OCUPADA</option>
+                </select><br><br>
+
+                <button type="submit">Guardar cambios</button>
+            </form>
+            <br><a href="/cama">Volver</a>
+        `);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//ACTUALIZAR CAMA
+app.post('/cama/editar/:num_cama/:num_habitacion', async (req, res) => {
+    const num_cama = Number(req.params.num_cama);
+    const num_habitacion = Number(req.params.num_habitacion);
+    const {estado} = req.body;
+    try {
+        await pool.query(`UPDATE cama
+                          SET estado=$1
+                          WHERE num_cama = $2
+                            AND num_habitacion = $3`,
+            [estado, num_cama, num_habitacion]
+        );
+        res.redirect('/cama');
+    } catch (err: any) {
+        res.status(400).send(`<h1>Error</h1><pre>${err.message}</pre><a href="/cama">Volver</a>`);
+    }
+});
+
 //BORRAR CAMA
 app.post('/cama/borrar/:num_cama/:num_habitacion', async (req, res) => {
     const num_cama = Number(req.params.num_cama);
@@ -648,6 +779,8 @@ app.get('/especialidad', async (_req, res) => {
                 <td>${e.id_especialidad}</td>
                 <td>${e.nombre}</td>
                 <td>
+                    <a href="/especialidad/editar/${e.id_especialidad}">Editar</a>
+                    |
                     <form method="POST" action="/especialidad/borrar/${e.id_especialidad}" style="display:inline">
                         <button type="submit" onclick="return confirm('¿Borrar especialidad id:${e.id_especialidad}  nombre:${e.nombre}?')">Borrar</button>
                     </form>
@@ -662,6 +795,7 @@ app.get('/especialidad', async (_req, res) => {
                 <tr>
                     <th>ID Especialidad</th>
                     <th>Nombre</th>
+                    <th>Acciones</th>
                 </tr>
                 ${filas || '<tr><td colspan="2">No hay camas especialidades registradas.</td></tr>'}
             </table>
@@ -704,6 +838,48 @@ app.post('/especialidad/nueva', async (req, res) => {
             <pre>${err.message}</pre>
             <a href="/especialidad/nueva">Volver</a>
         `);
+    }
+});
+
+//EDITAR ESPECIALIDAD
+app.get('/especialidad/editar/:id', async (req, res) => {
+    const id = Number(req.params.id);
+    try {
+        const result = await pool.query(`
+                    SELECT id_especialidad, nombre
+                    FROM especialidad
+                    WHERE id_especialidad = $1`,
+            [id]);
+
+        if (result.rowCount === 0) return res.send('Especialidad no encontrada');
+        const e = result.rows[0];
+
+        res.send(`
+            <h1>Editar Especialidad ${e.id_especialidad}</h1>
+            <form method="POST" action="/especialidad/editar/${e.id_especialidad}">
+                Nombre: <input type="text" name="nombre" value="${e.nombre}" required><br><br>
+                <button type="submit">Guardar cambios</button>
+            </form>
+            <br><a href="/especialidad">Volver</a>
+        `);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//ACTUALIZAR ESPECIALIDAD
+app.post('/especialidad/editar/:id', async (req, res) => {
+    const id = Number(req.params.id);
+    const {nombre} = req.body;
+    try {
+        await pool.query('' +
+            'UPDATE especialidad ' +
+            'SET nombre=$1 ' +
+            'WHERE id_especialidad=$2', [nombre, id]);
+
+        res.redirect('/especialidad');
+    } catch (err: any) {
+        res.status(400).send(`<h1>Error</h1><pre>${err.message}</pre><a href="/especialidad">Volver</a>`);
     }
 });
 
@@ -775,6 +951,8 @@ app.get('/especializado_en', async (_req, res) => {
                 <td>${en.realiza_guardia ? 'SI' : 'NO'}</td>
                 <td>${en.max_guardia}</td>
                 <td>
+                    <a href="/especializado_en/editar/${en.id_especialidad}/${en.matricula}">Editar</a>
+                    |
                     <form method="POST" action="/especializado_en/borrar/${en.id_especialidad}/${en.matricula}" style="display:inline">
                         <button type="submit" onclick="return confirm('¿Borrar especialidado_en id:${en.id_especialidad}  nombre:${en.nombre_medico} matricula:${en.matricula}?')">Borrar</button>
                     </form>
@@ -791,6 +969,7 @@ app.get('/especializado_en', async (_req, res) => {
                     <th>Detalle (Especialidad / Médico)</th>
                     <th>Realiza Guardia?</th>
                     <th>Cantidad Máxima</th>
+                    <th>Acciones</th>
                 </tr>
                 ${filas || '<tr><td colspan="2">No hay registros.</td></tr>'}
             </table>
@@ -807,7 +986,7 @@ app.get('/especializado_en/nueva', async (_req, res) => {
     <h1>Nueva Especialidad</h1>
     <form method="POST" action="/especializado_en/nueva">
         ID Especialidad:
-        <input type="text" name="id_especialidad" required><br><br>
+        <input type="text" name="id_especialidad" required autofocus><br><br>
         
         Matrícula:
         <input type="text" name="matricula" required><br><br>
@@ -859,6 +1038,77 @@ app.post('/especializado_en/nueva', async (req, res) => {
             <pre>${err.message}</pre>
             <a href="/especializado_en/nueva">Volver</a>
         `);
+    }
+});
+
+//EDITAR ESPECIALIZADO_EN
+app.get('/especializado_en/editar/:id_esp/:matricula', async (req, res) => {
+    const id_esp = Number(req.params.id_esp);
+    const matricula = Number(req.params.matricula);
+
+    try {
+        const result = await pool.query(`
+                    SELECT *
+                    FROM especializado_en
+                    WHERE id_especialidad = $1
+                      AND matricula = $2`,
+            [id_esp, matricula]
+        );
+
+        if (result.rowCount === 0) return res.send('Registro no encontrado');
+        const r = result.rows[0];
+
+        res.send(`
+            <h1>Editar Especialidad x Médico</h1>
+            <form method="POST" action="/especializado_en/editar/${id_esp}/${matricula}">
+                ID Especialidad: <input type="text" value="${r.id_especialidad}" disabled><br><br>
+                Matrícula: <input type="text" value="${r.matricula}" disabled><br><br>
+                
+                Realiza Guardia:
+                <input type="checkbox" id="check_guardia" name="realiza_guardia" ${r.realiza_guardia ? 'checked' : ''}><br><br>
+                
+                Cantidad Máxima de Guardias:
+                <input type="number" id="input_max" name="max_guardia" value="${r.max_guardia}" ${!r.realiza_guardia ? 'disabled' : ''}><br><br>
+                
+                <button type="submit">Guardar cambios</button>
+            </form>
+            <br><a href="/especializado_en">Volver</a>
+
+            <script>
+                const checkbox = document.getElementById('check_guardia');
+                const inputMax = document.getElementById('input_max');
+                checkbox.addEventListener('change', function() {
+                    inputMax.disabled = !this.checked;
+                    if (!this.checked) inputMax.value = 0;
+                });
+            </script>
+        `);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//ACTUALIZAR ESPECIALIZADO_EN
+app.post('/especializado_en/editar/:id_esp/:matricula', async (req, res) => {
+    const id_esp = Number(req.params.id_esp);
+    const matricula = Number(req.params.matricula);
+    const {realiza_guardia, max_guardia} = req.body;
+
+    const haceGuardia = !!realiza_guardia;
+    const max = haceGuardia ? Number(max_guardia) : 0;
+
+    try {
+        await pool.query(
+            `UPDATE especializado_en
+             SET realiza_guardia=$1,
+                 max_guardia=$2
+             WHERE id_especialidad = $3
+               AND matricula = $4`,
+            [haceGuardia, max, id_esp, matricula]
+        );
+        res.redirect('/especializado_en');
+    } catch (err: any) {
+        res.status(400).send(`<h1>Error</h1><pre>${err.message}</pre><a href="/especializado_en">Volver</a>`);
     }
 });
 
@@ -921,6 +1171,7 @@ app.get('/guardia', async (_req, res) => {
                 <tr>
                     <th>ID Guardia</th>
                     <th>Tipo Guardia</th>
+                    <th>Acciones</th>
                 </tr>
                 ${filas || '<tr><td colspan="2">No hay registros.</td></tr>'}
             </table>
@@ -1002,15 +1253,125 @@ app.post('/guardia/borrar/:id_guardia', async (req, res) => {
     }
 });
 
+//ASIGNACION_GUARDIA
+app.get('/asignacion_guardia', async (_req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT ag.id_guardia,
+                   ag.matricula,
+                   gu.tipo_guardia,
+                   m.apellido,
+                   m.nombre,
+                   e.nombre as nombre_esp
+            FROM asignacion_guardia ag
+                     JOIN medico m ON ag.matricula = m.matricula
+                     JOIN guardia gu ON ag.id_guardia = gu.id_guardia
+                     JOIN especialidad e ON ag.id_especialidad = e.id_especialidad
+            ORDER BY ag.id_guardia, m.apellido
+        `);
+
+        const filas = result.rows.map((f: any) => `
+            <tr>
+                <td>${f.id_guardia} - ${f.tipo_guardia}</td>
+                <td>Dr. <b>${f.apellido}</b>, ${f.nombre} <small>(Mat: ${f.matricula})</small></td>
+                <td>${f.nombre_esp}</td>
+                <td>
+                    <form method="POST" action="/asignacion_guardia/borrar/${f.id_guardia}/${f.matricula}" style="display:inline">
+                        <button type="submit" onclick="return confirm('¿Borrar asignacion de guardia id:${f.id_guardia}  matricula:${f.matricula} ?')">Borrar</button>
+                    </form>
+                </td>
+            </tr>
+        `).join('');
+
+        res.send(`
+            <h1>Gestión de Asignación de Guardias</h1>
+            <a href="/asignacion_guardia/nueva">➕ Nueva Asignación de Guardia</a> | <a href="/">Inicio</a><br><br>
+            <table border="1" cellpadding="5">
+                <tr>
+                    <th>Guardia</th>
+                    <th>Médico</th>
+                    <th>Especialidad</th>
+                    <th>Acciones</th>
+                </tr>
+                ${filas || '<tr><td colspan="4">No hay asignaciones.</td></tr>'}
+            </table>
+        `);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//NUEVA GUARDIA
+app.get('/asignacion_guardia/nueva', async (_req, res) => {
+    try {
+        res.send(`
+    <h1>Nueva Asignación de Guardia</h1>
+    <form method="POST" action="/asignacion_guardia/nueva">
+        ID Guardia:
+        <input type="text" name="id_guardia" required autofocus><br><br>
+        
+        Matrícula:
+        <input type="text" name="matricula" required><br><br>
+        
+        ID Especialidad:
+        <input type="text" name="id_especialidad" required><br><br>
+        
+        <button type="submit">Guardar Asignación de Guardia</button>
+    </form>
+    <br><a href="/asignacion_guardia">Volver</a>
+`);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//AGREGAR NUEVA ASIGNACION DE GUARDIA
+app.post('/asignacion_guardia/nueva', async (req, res) => {
+    const {id_guardia, matricula, id_especialidad} = req.body;
+
+    try {
+        await pool.query(
+            `INSERT INTO asignacion_guardia (id_guardia, matricula, id_especialidad)
+             VALUES ($1, $2, $3)`,
+            [id_guardia, matricula, id_especialidad]
+        );
+        res.redirect('/asignacion_guardia');
+    } catch (err: any) {
+        res.status(400).send(`
+            <h1>Error al guardar</h1>
+            <pre>${err.message}</pre>
+            <a href="/asignacion_guardia/nueva">Volver</a>
+        `);
+    }
+});
+
+//BORRAR asignacion_guardia
+app.post('/asignacion_guardia/borrar/:id_guardia/:matricula', async (req, res) => {
+    const id_guardia = Number(req.params.id_guardia);
+    const matricula = Number(req.params.matricula);
+
+    try {
+        await pool.query(
+            'DELETE FROM asignacion_guardia WHERE id_guardia=$1 and matricula=$2',
+            [id_guardia, matricula]
+        );
+
+        res.redirect('/asignacion_guardia');
+
+    } catch (err: any) {
+        res.status(400).send(`<h1>Error</h1><pre>${err.message}</pre><a href="/asignacion_guardia">Volver</a>`);
+    }
+});
+
 /*
     HECHO (del faltan):
    - cama: clave compuesta (num_cama,num_habitacion) → forms con select de habitación + número de cama.
    - especialidad
    - especializado_en
    - guardia
+   - asignacion_guardia
 
 	FALTAN:
-   - asignacion_guardia
    - periodo_vacaciones / tiene
    - internacion
    - ronda / incluye
