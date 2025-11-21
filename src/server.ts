@@ -1,10 +1,10 @@
-import express, { Request, Response } from 'express';
-import { Pool } from 'pg';
+import express, {Request, Response} from 'express';
+import {Pool} from 'pg';
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({extended: true}));
 
 const pool = new Pool({
     user: 'postgres',
@@ -45,7 +45,7 @@ app.get('/paciente', async (_req, res) => {
         const result = await pool.query(
             'SELECT dni, nombre, apellido, fecha_nac, sexo FROM paciente ORDER BY apellido, nombre'
         );
-        const filas = result.rows.map((p:any) => `
+        const filas = result.rows.map((p: any) => `
       <tr>
         <td>${p.dni}</td>
         <td>${p.apellido}</td>
@@ -97,11 +97,11 @@ app.get('/paciente/nuevo', (_req, res) => {
 });
 //AGREGAR PACIENTE
 app.post('/paciente/nuevo', async (req, res) => {
-    const { dni, nombre, apellido, fecha_nac, sexo } = req.body;
+    const {dni, nombre, apellido, fecha_nac, sexo} = req.body;
     try {
         await pool.query(
-            `INSERT INTO paciente(dni,nombre,apellido,fecha_nac,sexo)
-       VALUES ($1,$2,$3,$4,$5)`,
+            `INSERT INTO paciente(dni, nombre, apellido, fecha_nac, sexo)
+             VALUES ($1, $2, $3, $4, $5)`,
             [Number(dni), nombre, apellido, fecha_nac, sexo]
         );
         res.redirect('/paciente');
@@ -147,12 +147,15 @@ app.get('/paciente/editar/:dni', async (req, res) => {
 //EDITAR PACIENTE
 app.post('/paciente/editar/:dni', async (req, res) => {
     const dni = Number(req.params.dni);
-    const { nombre, apellido, fecha_nac, sexo } = req.body;
+    const {nombre, apellido, fecha_nac, sexo} = req.body;
     try {
         await pool.query(
             `UPDATE paciente
-       SET nombre=$1, apellido=$2, fecha_nac=$3, sexo=$4
-       WHERE dni=$5`,
+             SET nombre=$1,
+                 apellido=$2,
+                 fecha_nac=$3,
+                 sexo=$4
+             WHERE dni = $5`,
             [nombre, apellido, fecha_nac, sexo, dni]
         );
         res.redirect('/paciente');
@@ -177,7 +180,7 @@ app.get('/medico', async (_req, res) => {
         const result = await pool.query(
             'SELECT matricula,dni,nombre,apellido,cuil_cuit,fecha_ingreso FROM medico ORDER BY apellido,nombre'
         );
-        const filas = result.rows.map((m:any) => `
+        const filas = result.rows.map((m: any) => `
       <tr>
         <td>${m.matricula}</td>
         <td>${m.dni}</td>
@@ -227,11 +230,11 @@ app.get('/medico/nuevo', (_req, res) => {
 });
 //AGREGAR MEDICO
 app.post('/medico/nuevo', async (req, res) => {
-    const { matricula, dni, nombre, apellido, cuil_cuit, fecha_ingreso } = req.body;
+    const {matricula, dni, nombre, apellido, cuil_cuit, fecha_ingreso} = req.body;
     try {
         await pool.query(
-            `INSERT INTO medico(matricula,dni,nombre,apellido,cuil_cuit,fecha_ingreso)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
+            `INSERT INTO medico(matricula, dni, nombre, apellido, cuil_cuit, fecha_ingreso)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
             [Number(matricula), Number(dni), nombre, apellido, cuil_cuit, fecha_ingreso]
         );
         res.redirect('/medico');
@@ -274,12 +277,16 @@ app.get('/medico/editar/:matricula', async (req, res) => {
 //ACTUALIZAR MEDICO
 app.post('/medico/editar/:matricula', async (req, res) => {
     const matricula = Number(req.params.matricula);
-    const { dni, nombre, apellido, cuil_cuit, fecha_ingreso } = req.body;
+    const {dni, nombre, apellido, cuil_cuit, fecha_ingreso} = req.body;
     try {
         await pool.query(
             `UPDATE medico
-       SET dni=$1, nombre=$2, apellido=$3, cuil_cuit=$4, fecha_ingreso=$5
-       WHERE matricula=$6`,
+             SET dni=$1,
+                 nombre=$2,
+                 apellido=$3,
+                 cuil_cuit=$4,
+                 fecha_ingreso=$5
+             WHERE matricula = $6`,
             [Number(dni), nombre, apellido, cuil_cuit, fecha_ingreso, matricula]
         );
         res.redirect('/medico');
@@ -302,7 +309,7 @@ app.post('/medico/borrar/:matricula', async (req, res) => {
 app.get('/sector', async (_req, res) => {
     try {
         const result = await pool.query('SELECT id_sector,tipo FROM sector ORDER BY id_sector');
-        const filas = result.rows.map((s:any) => `
+        const filas = result.rows.map((s: any) => `
       <tr>
         <td>${s.id_sector}</td>
         <td>${s.tipo}</td>
@@ -341,7 +348,7 @@ app.get('/sector/nuevo', (_req, res) => {
 });
 //AGREGAR SECTOR
 app.post('/sector/nuevo', async (req, res) => {
-    const { tipo } = req.body;
+    const {tipo} = req.body;
     try {
         await pool.query('INSERT INTO sector(tipo) VALUES($1)', [tipo]);
         res.redirect('/sector');
@@ -371,7 +378,7 @@ app.get('/sector/editar/:id', async (req, res) => {
 //ACTUALIZAR SECTOR
 app.post('/sector/editar/:id', async (req, res) => {
     const id = Number(req.params.id);
-    const { tipo } = req.body;
+    const {tipo} = req.body;
     try {
         await pool.query('UPDATE sector SET tipo=$1 WHERE id_sector=$2', [tipo, id]);
         res.redirect('/sector');
@@ -394,12 +401,12 @@ app.post('/sector/borrar/:id', async (req, res) => {
 app.get('/habitacion', async (_req, res) => {
     try {
         const result = await pool.query(`
-      SELECT h.num_habitacion,h.piso,h.orientacion,s.tipo AS sector
-      FROM habitacion h
-      JOIN sector s ON s.id_sector = h.id_sector
-      ORDER BY h.num_habitacion
-    `);
-        const filas = result.rows.map((h:any) => `
+            SELECT h.num_habitacion, h.piso, h.orientacion, s.tipo AS sector
+            FROM habitacion h
+                     JOIN sector s ON s.id_sector = h.id_sector
+            ORDER BY h.num_habitacion
+        `);
+        const filas = result.rows.map((h: any) => `
       <tr>
         <td>${h.num_habitacion}</td>
         <td>${h.piso}</td>
@@ -430,7 +437,7 @@ app.get('/habitacion', async (_req, res) => {
 app.get('/habitacion/nueva', async (_req, res) => {
     try {
         const sectores = await pool.query('SELECT id_sector,tipo FROM sector ORDER BY id_sector');
-        const options = sectores.rows.map((s:any) =>
+        const options = sectores.rows.map((s: any) =>
             `<option value="${s.id_sector}">${s.id_sector} - ${s.tipo}</option>`
         ).join('');
         res.send(`
@@ -460,11 +467,11 @@ app.get('/habitacion/nueva', async (_req, res) => {
 
 //AGREGAR HABITACION
 app.post('/habitacion/nueva', async (req, res) => {
-    const { num_habitacion, piso, orientacion, id_sector } = req.body;
+    const {num_habitacion, piso, orientacion, id_sector} = req.body;
     try {
         await pool.query(
             `INSERT INTO habitacion(num_habitacion, piso, orientacion, id_sector)
-       VALUES($1, $2, $3, $4)`,
+             VALUES ($1, $2, $3, $4)`,
             [Number(num_habitacion), Number(piso), orientacion, Number(id_sector)]
         );
         res.redirect('/habitacion');
@@ -578,10 +585,11 @@ app.get('/cama/nueva', async (_req, res) => {
 
 //AGREGAR NUEVA CAMA
 app.post('/cama/nueva', async (req, res) => {
-    const { num_cama, num_habitacion, estado } = req.body;
+    const {num_cama, num_habitacion, estado} = req.body;
     try {
         await pool.query(
-            `INSERT INTO cama (num_cama, num_habitacion, estado) VALUES ($1, $2, $3)`,
+            `INSERT INTO cama (num_cama, num_habitacion, estado)
+             VALUES ($1, $2, $3)`,
             [Number(num_cama), Number(num_habitacion), estado]
         );
         res.redirect('/cama');
@@ -682,17 +690,17 @@ app.get('/especialidad/nueva', async (_req, res) => {
 
 //AGREGAR NUEVA ESPECIALIDAD
 app.post('/especialidad/nueva', async (req, res) => {
-    const { nombre } = req.body;
+    const {nombre} = req.body;
     try {
         await pool.query(
-            `INSERT INTO especialidad (nombre) VALUES ($1)`,
+            `INSERT INTO especialidad (nombre)
+             VALUES ($1)`,
             [nombre]
         );
         res.redirect('/especialidad');
     } catch (err: any) {
         res.status(400).send(`
             <h1>Error al guardar</h1>
-            <p>Es probable que esa especialidad ya exista.</p>
             <pre>${err.message}</pre>
             <a href="/especialidad/nueva">Volver</a>
         `);
@@ -740,13 +748,158 @@ app.post('/especialidad/borrar/:id_especialidad', async (req, res) => {
     }
 });
 
+//ESPECIALIZADO_EN
+app.get('/especializado_en', async (_req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT en.id_especialidad,
+                   en.matricula,
+                   en.realiza_guardia,
+                   en.max_guardia,
+                   es.nombre  as nombre_especialidad,
+                   m.nombre   as nombre_medico,
+                   m.apellido as apellido_medico
+            FROM especializado_en en
+                     JOIN medico m ON en.matricula = m.matricula
+                     JOIN especialidad es ON en.id_especialidad = es.id_especialidad
+            ORDER BY en.id_especialidad
+        `);
+
+        const filas = result.rows.map((en: any) => `
+            <tr>
+                <td>${en.id_especialidad}</td>
+                <td>
+                    <b>${en.nombre_especialidad}</b> <br>
+                    <small>Dr. ${en.nombre_medico} ${en.apellido_medico}</small>
+                </td>
+                <td>${en.realiza_guardia ? 'SI' : 'NO'}</td>
+                <td>${en.max_guardia}</td>
+                <td>
+                    <form method="POST" action="/especializado_en/borrar/${en.id_especialidad}/${en.matricula}" style="display:inline">
+                        <button type="submit" onclick="return confirm('¿Borrar especialidado_en id:${en.id_especialidad}  nombre:${en.nombre_medico} matricula:${en.matricula}?')">Borrar</button>
+                    </form>
+                </td>
+            </tr>
+        `).join('');
+
+        res.send(`
+            <h1>Gestión de Especialidades x Médico</h1>
+            <a href="/especializado_en/nueva">➕ Nueva Especialidad x Médico</a> | <a href="/">Inicio</a><br><br>
+            <table border="1" cellpadding="5">
+                <tr>
+                    <th>ID Especialidad</th>
+                    <th>Detalle (Especialidad / Médico)</th>
+                    <th>Realiza Guardia?</th>
+                    <th>Cantidad Máxima</th>
+                </tr>
+                ${filas || '<tr><td colspan="2">No hay registros.</td></tr>'}
+            </table>
+        `);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//NUEVA ESPECIALIZADO_EN
+app.get('/especializado_en/nueva', async (_req, res) => {
+    try {
+        res.send(`
+    <h1>Nueva Especialidad</h1>
+    <form method="POST" action="/especializado_en/nueva">
+        ID Especialidad:
+        <input type="text" name="id_especialidad" required><br><br>
+        
+        Matrícula:
+        <input type="text" name="matricula" required><br><br>
+        
+        Realiza Guardia:
+        <input type="checkbox" id="check_guardia" name="realiza_guardia"><br><br>
+        
+        Cantidad Máxima de Guardias:
+        <input type="number" id="input_max" name="max_guardia" required disabled><br><br>
+        
+        <button type="submit">Guardar Especialidad x Médico</button>
+    </form>
+    <br><a href="/especializado_en">Volver</a>
+
+    <script>
+        const checkbox = document.getElementById('check_guardia');
+        const inputMax = document.getElementById('input_max');
+
+        checkbox.addEventListener('change', function() {
+            inputMax.disabled = !this.checked;
+
+            if (!this.checked) {
+                inputMax.value = "";
+            }
+        });
+    </script>
+`);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//AGREGAR NUEVA ESPECIALIZADO_EN
+app.post('/especializado_en/nueva', async (req, res) => {
+    const {id_especialidad, matricula, realiza_guardia, max_guardia} = req.body;
+
+    const haceGuardia = !!realiza_guardia;
+    const max = haceGuardia ? max_guardia : 0;
+    try {
+        await pool.query(
+            `INSERT INTO especializado_en (id_especialidad, matricula, realiza_guardia, max_guardia)
+             VALUES ($1, $2, $3, $4)`,
+            [id_especialidad, matricula, haceGuardia, max]
+        );
+        res.redirect('/especializado_en');
+    } catch (err: any) {
+        res.status(400).send(`
+            <h1>Error al guardar</h1>
+            <pre>${err.message}</pre>
+            <a href="/especializado_en/nueva">Volver</a>
+        `);
+    }
+});
+
+//BORRAR ESPECIALIZADO_EN
+app.post('/especializado_en/borrar/:id_especialidad/:matricula', async (req, res) => {
+    const id_especialidad = Number(req.params.id_especialidad);
+    const matricula = Number(req.params.matricula);
+
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        await client.query(
+            'DELETE FROM asignacion_guardia WHERE id_especialidad=$1 and matricula=$2',
+            [id_especialidad, matricula]
+        );
+
+        await client.query(
+            'DELETE FROM especializado_en WHERE id_especialidad=$1 AND matricula=$2',
+            [id_especialidad, matricula]
+        );
+
+        await client.query('COMMIT');
+        res.redirect('/especializado_en');
+
+    } catch (err: any) {
+        await client.query('ROLLBACK');
+        res.status(400).send(`<h1>Error</h1><pre>${err.message}</pre><a href="/especializado_en">Volver</a>`);
+    } finally {
+        client.release();
+    }
+});
+
 /*
     HECHO (del faltan):
    - cama: clave compuesta (num_cama,num_habitacion) → forms con select de habitación + número de cama.
    - especialidad
+   - especializado_en
 
 	FALTAN:
-   - especializado_en
    - guardia / asignacion_guardia
    - periodo_vacaciones / tiene
    - internacion
